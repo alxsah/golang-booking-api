@@ -4,7 +4,7 @@ import (
 	"log"
 	mgo "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
-  . "go-api/booking"
+  . "github.com/alxsah/golang-booking-api/booking"
 )
 
 type BookingsDAO struct {

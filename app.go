@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
-	. "go-api/dao"
-	. "go-api/config"
-	. "go-api/booking"
+	. "github.com/alxsah/golang-booking-api/dao"
+	. "github.com/alxsah/golang-booking-api/config"
+	. "github.com/alxsah/golang-booking-api/booking"
 )
 
 var config = Config{}
