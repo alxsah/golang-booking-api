@@ -52,7 +52,7 @@ func getBooking(w http.ResponseWriter, r *http.Request) {
 func createBooking(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	var booking Booking
-  if err := json.NewDecoder(r.Body).Decode(&booking); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&booking); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
