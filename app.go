@@ -8,20 +8,21 @@ import (
   . "github.com/alxsah/golang-booking-api/dao"
   . "github.com/alxsah/golang-booking-api/config"
   . "github.com/alxsah/golang-booking-api/booking"
+  . "github.com/alxsah/golang-booking-api/auth"
+  . "github.com/alxsah/golang-booking-api/utils"
 )
 
 var config = Config{}
 var dao = BookingsDAO{}
 
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-  respondWithJson(w, code, map[string]string{"error": msg})
-}
-
-func respondWithJson(w http.ResponseWriter, code int, payload interface{}) {
-  response, _ := json.Marshal(payload)
-  w.Header().Set("Content-Type", "application/json")
-  w.WriteHeader(code)
-  w.Write(response)
+func getToken(w http.ResponseWriter, r *http.Request) {
+  tokenString, err := GenerateJWT()
+  if err != nil {
+    RespondWithError(w, http.StatusInternalServerError, "Failed to generate JWT")
+    return
+  }
+  tokenObj := Token { tokenString }
+  RespondWithJson(w, http.StatusOK, tokenObj)
 }
 
 func findBookingById(r *http.Request) (Booking, error) {
@@ -30,51 +31,50 @@ func findBookingById(r *http.Request) (Booking, error) {
   return booking, err
 }
 
-
 func getAllBookings(w http.ResponseWriter, r *http.Request) {
   bookings, err := dao.FindAll()
   if err != nil {
-    respondWithError(w, http.StatusInternalServerError, err.Error())
+    RespondWithError(w, http.StatusInternalServerError, err.Error())
     return
   }
-  respondWithJson(w, http.StatusOK, bookings)
+  RespondWithJson(w, http.StatusOK, bookings)
 }
 
 func getBooking(w http.ResponseWriter, r *http.Request) {
   booking, err := findBookingById(r)
   if err != nil {
-    respondWithError(w, http.StatusBadRequest, "Invalid Booking ID")
+    RespondWithError(w, http.StatusBadRequest, "Invalid Booking ID")
     return
   }
-  respondWithJson(w, http.StatusOK, booking)
+  RespondWithJson(w, http.StatusOK, booking)
 }
 
 func createBooking(w http.ResponseWriter, r *http.Request) {
   defer r.Body.Close()
   var booking Booking
   if err := json.NewDecoder(r.Body).Decode(&booking); err != nil {
-    respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+    RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
     return
   }
   booking.ID = bson.NewObjectId()
   if err := dao.Insert(booking); err != nil {
-    respondWithError(w, http.StatusInternalServerError, err.Error())
+    RespondWithError(w, http.StatusInternalServerError, err.Error())
     return
   }
-  respondWithJson(w, http.StatusCreated, booking)
+  RespondWithJson(w, http.StatusCreated, booking)
 }
 
 func deleteBooking(w http.ResponseWriter, r *http.Request) {
   booking, err := findBookingById(r);
   if err != nil {
-    respondWithError(w, http.StatusBadRequest, "Invalid Booking ID")
+    RespondWithError(w, http.StatusBadRequest, "Invalid Booking ID")
     return
   }
   if err := dao.Delete(booking); err != nil {
-    respondWithError(w, http.StatusInternalServerError, err.Error())
+    RespondWithError(w, http.StatusInternalServerError, err.Error())
     return
   }
-  respondWithJson(w, http.StatusOK, map[string]string{"result": "success"})
+  RespondWithJson(w, http.StatusOK, map[string]string{"result": "success"})
 }
 
 func updateBooking(w http.ResponseWriter, r *http.Request) {
@@ -83,18 +83,18 @@ func updateBooking(w http.ResponseWriter, r *http.Request) {
   id := mux.Vars(r)["id"]
   _, err := findBookingById(r);
   if err != nil {
-    respondWithError(w, http.StatusBadRequest, "Invalid Booking ID")
+    RespondWithError(w, http.StatusBadRequest, "Invalid Booking ID")
     return
   }
   if err := json.NewDecoder(r.Body).Decode(&newBooking); err != nil {
-    respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+    RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
     return
   }
   if err := dao.Update(id, newBooking); err != nil {
-    respondWithError(w, http.StatusInternalServerError, err.Error())
+    RespondWithError(w, http.StatusInternalServerError, err.Error())
     return
   }
-  respondWithJson(w, http.StatusOK, map[string]string{"result": "success"})
+  RespondWithJson(w, http.StatusOK, map[string]string{"result": "success"})
 }
 
 func init() {
@@ -106,11 +106,13 @@ func init() {
 
 func main() {
   r := mux.NewRouter()
-  r.HandleFunc("/bookings", getAllBookings).Methods("GET")
-  r.HandleFunc("/bookings", createBooking).Methods("POST")
-  r.HandleFunc("/bookings/{id}", updateBooking).Methods("PUT")
-  r.HandleFunc("/bookings/{id}", getBooking).Methods("GET")
-  r.HandleFunc("/bookings/{id}", deleteBooking).Methods("DELETE")
+
+  r.HandleFunc("/get-token", getToken).Methods("GET")
+  r.HandleFunc("/bookings", IsAuthorized(getAllBookings)).Methods("GET")
+  r.HandleFunc("/bookings", IsAuthorized(createBooking)).Methods("POST")
+  r.HandleFunc("/bookings/{id}", IsAuthorized(updateBooking)).Methods("PUT")
+  r.HandleFunc("/bookings/{id}", IsAuthorized(getBooking)).Methods("GET")
+  r.HandleFunc("/bookings/{id}", IsAuthorized(deleteBooking)).Methods("DELETE")
 
   if err := http.ListenAndServe(":3001", r); err != nil {
     log.Fatal(err)
