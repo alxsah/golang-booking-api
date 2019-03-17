@@ -1,4 +1,4 @@
 {
-    "server": "localhost",
+    "server": "mongo",
     "database": "mydb"
 }
