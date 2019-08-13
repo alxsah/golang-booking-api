@@ -4,6 +4,9 @@
 
 A small API I'm working on to learn Golang.
 
+## Specification
+
+
 
 `POST /register`
 
